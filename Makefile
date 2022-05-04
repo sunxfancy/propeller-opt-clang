@@ -11,6 +11,12 @@ endif
 build:
 	$(DOCKER) /bin/bash /home/propeller/src/run.sh
 
+benchmarking:
+	/bin/bash ./benchmarking.sh
+
+opt:
+	$(DOCKER) /bin/bash /home/propeller/src/opt.sh
+
 start: docker/.build-docker
 	$(DOCKER_START) /bin/bash
 
