@@ -11,6 +11,10 @@ endif
 build:
 	$(DOCKER) /bin/bash /home/propeller/src/run.sh
 
+build2:
+	$(DOCKER) /bin/bash /home/propeller/src/instrumented.sh
+
+
 benchmarking:
 	/bin/bash ./benchmarking.sh
 
