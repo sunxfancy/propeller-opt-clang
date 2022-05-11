@@ -7,7 +7,7 @@ CLANG_VERSION=12
 PATH_TO_LLVM_SOURCES=${BASE_PROPELLER_CLANG_DIR}/sources
 CPATH=${INSTALL_DIR}/trunk/bin
 
-cd ${INSTALL_DIR}/instrumented/profiles
+cd ${BUILD_DIR}/instrumented/profiles
 $CPATH/llvm-profdata merge -output=clang.profdata *
 
 PATH_TO_LLVM_SOURCES=${BASE_PROPELLER_CLANG_DIR}/sources

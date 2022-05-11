@@ -12,8 +12,13 @@ build:
 	$(DOCKER) /bin/bash /home/propeller/src/run.sh
 
 build2:
-	$(DOCKER) /bin/bash /home/propeller/src/instrumented.sh
+	/bin/bash /home/propeller/src/instrumented.sh
 
+pgo:
+	$(DOCKER) /bin/bash /home/propeller/src/pgo.sh 
+
+final:
+	$(DOCKER) /bin/bash /home/propeller/src/final.sh
 
 benchmarking:
 	/bin/bash ./benchmarking.sh

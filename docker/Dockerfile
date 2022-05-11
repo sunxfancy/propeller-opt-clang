@@ -36,6 +36,8 @@ RUN useradd -ms /bin/bash propeller
 
 RUN apt-get update && apt-get install -y libelf-dev libssl-dev libtinfo-dev pkg-config
 
+RUN apt-get install -y linux-tools-common linux-tools-generic linux-tools-`uname -r`
+
 USER propeller
 WORKDIR /home/propeller
 EXPOSE 22

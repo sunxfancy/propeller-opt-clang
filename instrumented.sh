@@ -1,7 +1,10 @@
-INSTALL_DIR=/home/propeller/src/install
-BUILD_DIR=/home/propeller/src/build
 
-BASE_PROPELLER_CLANG_DIR=/home/propeller/src/propeller
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+INSTALL_DIR=$SCRIPTPATH/install
+BUILD_DIR=$SCRIPTPATH/build
+
+BASE_PROPELLER_CLANG_DIR=$SCRIPTPATH/propeller
 CLANG_VERSION=12
 
 PATH_TO_LLVM_SOURCES=${BASE_PROPELLER_CLANG_DIR}/sources
