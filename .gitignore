@@ -1,4 +1,12 @@
 .build-docker
 /propeller/
-/build/
-/install/
+/build.dir/
+/install.dir/
+/bench.dir/
+/source.dir/
+.autofdo
+.baseline
+.labels
+.trunk
+.instrumented
+/.vscode/
