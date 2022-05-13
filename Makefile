@@ -45,7 +45,7 @@ source.dir/.llvm-project:
 
 source.dir/.autofdo: 
 	mkdir -p source.dir/
-	cd source.dir/ && git clone  --depth 1 --single-branch --branch propeller --recursive https://github.com/google/autofdo.git
+	cd source.dir/ && git clone  --depth 1 --single-branch --branch propeller --recursive https://github.com/sunxfancy/autofdo.git
 	touch source.dir/.autofdo
 
 .autofdo: source.dir/.autofdo .trunk
