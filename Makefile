@@ -26,6 +26,8 @@ bench:
 	make bench-labels
 	make bench-instrumented
 
+opt: .final .pgo .propeller
+
 source.dir/.llvm-project: 
 	mkdir -p source.dir/
 	cd source.dir/ && git clone --depth 1 --single-branch --branch release/${CLANG_VERSION}.x https://github.com/llvm/llvm-project.git
@@ -160,6 +162,44 @@ merge_prof:
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
 	cd build.dir/final && ninja install -j $(shell nproc)
 	touch .final
+
+.pgo:
+	mkdir -p build.dir/pgo
+	mkdir -p install.dir/pgo
+	cd build.dir/pgo && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
+		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld \
+		-DLLVM_ENABLE_LTO=Full  \
+		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo
+	cd build.dir/pgo && ninja install -j $(shell nproc)
+	touch .pgo
+
+.propeller:
+	mkdir -p build.dir/propeller
+	mkdir -p install.dir/propeller
+	cd build.dir/propeller && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
+		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld \
+		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
+		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/propeller
+	cd build.dir/propeller && ninja install -j $(shell nproc)
+	touch .propeller
+
 
 %.dir:
 	mkdir -p $@

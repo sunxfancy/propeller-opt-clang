@@ -9,4 +9,7 @@
 .labels
 .trunk
 .instrumented
+.final
+.pgo
+.propeller
 /.vscode/
