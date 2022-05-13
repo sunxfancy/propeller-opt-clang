@@ -17,6 +17,8 @@ TRUNK=$(PWD)/install.dir/trunk/bin
 LABELS=$(PWD)/install.dir/labels/bin
 INSTRUMENTED=$(PWD)/install.dir/instrumented/bin
 AUTOFDO=$(PWD)/source.dir/autofdo
+LABELS_PROF=$(PWD)/bench.dir/labels
+INSTRUMENTED_PROF=$(PWD)/build.dir/instrumented/profiles
 
 build: .autofdo .baseline .labels .instrumented
 
@@ -130,9 +132,34 @@ bench-instrumented:
 	cd bench.dir/instrumented && ninja clang 
 
 create_llvm_prof:
-	cd bench.dir/labels && $(AUTOFDO)/create_llvm_prof --format=propeller \
+	cd $(LABELS_PROF) && $(AUTOFDO)/create_llvm_prof --format=propeller \
 		--binary=$(LABELS)/clang-$(CLANG_VERSION) \
 		--profile=perf.data --out=cluster.txt  --propeller_symorder=symorder.txt
+
+merge_prof:
+	cd $(INSTRUMENTED_PROF) && $(TRUNK)/llvm-profdata merge -output=clang.profdata *
+
+.final:
+	mkdir -p build.dir/final
+	mkdir -p install.dir/final
+	cd build.dir/final && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
+		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld \
+		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
+		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+		-DLLVM_ENABLE_LTO=Thin  \
+		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
+	cd build.dir/final && ninja install -j $(shell nproc)
+	touch .final
 
 %.dir:
 	mkdir -p $@
