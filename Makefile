@@ -15,9 +15,10 @@ PWD=$(shell pwd)
 LLVM=$(PWD)/source.dir/llvm-project/llvm
 TRUNK=$(PWD)/install.dir/trunk/bin
 LABELS=$(PWD)/install.dir/labels/bin
+PGO_LABELS=$(PWD)/install.dir/pgo-labels/bin
 INSTRUMENTED=$(PWD)/install.dir/instrumented/bin
 AUTOFDO=$(PWD)/source.dir/autofdo
-LABELS_PROF=$(PWD)/bench.dir/labels
+LABELS_PROF=$(PWD)/bench.dir/pgo-labels
 INSTRUMENTED_PROF=$(PWD)/build.dir/instrumented/profiles
 
 build: .autofdo .baseline .labels .instrumented
@@ -25,8 +26,21 @@ build: .autofdo .baseline .labels .instrumented
 bench: 
 	make bench-labels
 	make bench-instrumented
+	make labels.create_llvm_prof
+	make merge_prof
 
-opt: .final .pgo .propeller
+opt: .pgo .propeller .final
+
+bench2: 
+	make bench-pgo-labels
+	make pgo-labels.create_llvm_prof
+	make opt
+
+test: bench2
+	make baseline.test 
+	make pgo.test 
+	make propeller.test 
+	make final.test
 
 source.dir/.llvm-project: 
 	mkdir -p source.dir/
@@ -107,7 +121,7 @@ source.dir/.autofdo:
 	cd build.dir/instrumented && ninja install -j $(shell nproc)
 	touch .instrumented
 
-bench-labels: 
+bench-labels: .labels
 	mkdir -p bench.dir/labels
 	cd bench.dir/labels && cmake -G Ninja $(LLVM) \
 		-DCMAKE_BUILD_TYPE=Release \
@@ -121,7 +135,7 @@ bench-labels:
 	cd bench.dir/labels && chmod +x ./perf_commands.sh
 	cd bench.dir/labels && (perf record -e cycles:u -j any,u -- ./perf_commands.sh)
 
-bench-instrumented: 
+bench-instrumented: .instrumented
 	mkdir -p bench.dir/instrumented
 	cd bench.dir/instrumented && cmake -G Ninja $(LLVM) \
     	-DCMAKE_BUILD_TYPE=Release \
@@ -133,35 +147,13 @@ bench-instrumented:
 		-DLLVM_USE_LINKER=lld 
 	cd bench.dir/instrumented && ninja clang 
 
-create_llvm_prof:
-	cd $(LABELS_PROF) && $(AUTOFDO)/create_llvm_prof --format=propeller \
-		--binary=$(LABELS)/clang-$(CLANG_VERSION) \
+%.create_llvm_prof: 
+	cd $(PWD)/bench.dir/$(basename $@) && $(AUTOFDO)/create_llvm_prof --format=propeller \
+		--binary=$(PWD)/install.dir/$(basename $@)/bin/clang-$(CLANG_VERSION) \
 		--profile=perf.data --out=cluster.txt  --propeller_symorder=symorder.txt
 
 merge_prof:
 	cd $(INSTRUMENTED_PROF) && $(TRUNK)/llvm-profdata merge -output=clang.profdata *
-
-.final:
-	mkdir -p build.dir/final
-	mkdir -p install.dir/final
-	cd build.dir/final && cmake -G Ninja $(LLVM) \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DLLVM_TARGETS_TO_BUILD=X86 \
-		-DLLVM_OPTIMIZED_TABLEGEN=On \
-		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
-		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
-		-DLLVM_ENABLE_PROJECTS="clang;lld" \
-		-DLLVM_USE_LINKER=lld \
-		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
-		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
-		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-		-DLLVM_ENABLE_LTO=Thin  \
-		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
-		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
-	cd build.dir/final && ninja install -j $(shell nproc)
-	touch .final
 
 .pgo:
 	mkdir -p build.dir/pgo
@@ -174,7 +166,7 @@ merge_prof:
 		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DLLVM_USE_LINKER=lld \
-		-DLLVM_ENABLE_LTO=Full  \
+		-DLLVM_ENABLE_LTO=Thin  \
 		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo
 	cd build.dir/pgo && ninja install -j $(shell nproc)
@@ -201,8 +193,75 @@ merge_prof:
 	touch .propeller
 
 
-%.dir:
-	mkdir -p $@
+.pgo-labels: .trunk 
+	mkdir -p build.dir/pgo-labels
+	mkdir -p install.dir/pgo-labels
+	cd build.dir/pgo-labels && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
+		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld \
+		-DLLVM_ENABLE_LTO=Thin  \
+		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
+		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=labels" \
+		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=labels" \
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo-labels
+	cd build.dir/pgo-labels && ninja install -j $(shell nproc)
+	touch .pgo-labels
+
+
+bench-pgo-labels: .pgo-labels
+	mkdir -p bench.dir/pgo-labels
+	cd bench.dir/pgo-labels && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(PGO_LABELS)/clang \
+		-DCMAKE_CXX_COMPILER=$(PGO_LABELS)/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld 
+	cd bench.dir/pgo-labels && (ninja -t commands | head -100 > ./perf_commands.sh)
+	cd bench.dir/pgo-labels && chmod +x ./perf_commands.sh
+	cd bench.dir/pgo-labels && (perf record -e cycles:u -j any,u -- ./perf_commands.sh)
+
+.final:
+	mkdir -p build.dir/final
+	mkdir -p install.dir/final
+	cd build.dir/final && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
+		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld \
+		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
+		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+		-DLLVM_ENABLE_LTO=Thin  \
+		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
+	cd build.dir/final && ninja install -j $(shell nproc)
+	touch .final
+
+%.test:
+	mkdir -p test.dir/$(basename $@)
+	cd test.dir/$(basename $@) && cmake -G Ninja $(LLVM) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_TARGETS_TO_BUILD=X86 \
+		-DLLVM_OPTIMIZED_TABLEGEN=On \
+		-DCMAKE_C_COMPILER=$(PWD)/install.dir/$(basename $@)/bin/clang \
+		-DCMAKE_CXX_COMPILER=$(PWD)/install.dir/$(basename $@)/bin/clang++ \
+		-DLLVM_ENABLE_PROJECTS="clang;lld" \
+		-DLLVM_USE_LINKER=lld 
+	cd test.dir/$(basename $@) && (ninja -t commands | head -100 > ./perf_commands.sh)
+	cd test.dir/$(basename $@) && chmod +x ./perf_commands.sh
+	cd test.dir/$(basename $@) && perf stat -o $(PWD)/$(basename $@).txt -r5 -e instructions,cycles,L1-icache-misses,iTLB-misses -- bash ./perf_commands.sh
 
 # This is for directly install 
 preinstall:

@@ -3,6 +3,7 @@
 /build.dir/
 /install.dir/
 /bench.dir/
+/test.dir/
 /source.dir/
 .autofdo
 .baseline
@@ -12,4 +13,6 @@
 .final
 .pgo
 .propeller
+.pgo-labels
 /.vscode/
+*.txt
