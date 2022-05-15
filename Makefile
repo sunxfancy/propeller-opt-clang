@@ -36,7 +36,7 @@ bench2:
 	make pgo-labels.create_llvm_prof
 	make opt
 
-test: bench2
+test: 
 	make baseline.test 
 	make pgo.test 
 	make propeller.test 
@@ -208,6 +208,9 @@ merge_prof:
 		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
 		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=labels" \
 		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=labels" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--lto-basic-block-sections=labels -fuse-ld=lld" \
+  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--lto-basic-block-sections=labels -fuse-ld=lld" \
+  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--lto-basic-block-sections=labels -fuse-ld=lld" \
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo-labels
 	cd build.dir/pgo-labels && ninja install -j $(shell nproc)
 	touch .pgo-labels
