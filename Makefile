@@ -18,7 +18,8 @@ LABELS=$(PWD)/install.dir/labels/bin
 PGO_LABELS=$(PWD)/install.dir/pgo-labels/bin
 INSTRUMENTED=$(PWD)/install.dir/instrumented/bin
 AUTOFDO=$(PWD)/source.dir/autofdo
-LABELS_PROF=$(PWD)/bench.dir/pgo-labels
+LABELS_PROF=$(PWD)/bench.dir/labels
+PGO_LABELS_PROF=$(PWD)/bench.dir/pgo-labels
 INSTRUMENTED_PROF=$(PWD)/build.dir/instrumented/profiles
 
 build: .autofdo .baseline .labels .instrumented
@@ -29,12 +30,12 @@ bench:
 	make labels.create_llvm_prof
 	make merge_prof
 
-opt: .pgo .propeller .final
+opt: .pgo .propeller
 
 bench2: 
 	make bench-pgo-labels
 	make pgo-labels.create_llvm_prof
-	make opt
+	make .final
 
 test: 
 	make baseline.test 
@@ -241,11 +242,11 @@ bench-pgo-labels: .pgo-labels
 		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
 		-DLLVM_ENABLE_PROJECTS="clang;lld" \
 		-DLLVM_USE_LINKER=lld \
-		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
-		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(LABELS_PROF)/cluster.txt" \
-		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" \
+		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
 		-DLLVM_ENABLE_LTO=Thin  \
 		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
