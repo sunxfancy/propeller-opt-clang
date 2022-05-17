@@ -244,9 +244,9 @@ bench-pgo-labels: .pgo-labels
 		-DLLVM_USE_LINKER=lld \
 		-DCMAKE_C_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" \
 		-DCMAKE_CXX_FLAGS="-funique-internal-linkage-names -fbasic-block-sections=list=$(PGO_LABELS_PROF)/cluster.txt" \
-		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt" -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt" -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt" -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
+  		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
 		-DLLVM_ENABLE_LTO=Thin  \
 		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
