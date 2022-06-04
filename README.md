@@ -42,3 +42,6 @@ On top of PGO-optimized clang, we can use propeller to optimize its finally code
 1. In target `pgo-labels` , we need to build a labeled PGO-optimized clang. `-Wl,--lto-basic-block-sections=labels` should be passed to the linker since it's using LTO.
 2. `bench-pgo-labels` target will profile the labeled clang.
 3. `.final` target will build the PGO+propeller optimized clang. Especially, `-Wl,--lto-basic-block-sections=cluster.txt` also need to pass into the linker when LTO enabled.
+
+
+

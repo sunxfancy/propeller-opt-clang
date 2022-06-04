@@ -14,5 +14,8 @@
 .pgo
 .propeller
 .pgo-labels
+.pgo-opt-clang
+.pgo-propeller-opt-clang
+.propeller-opt-clang
 /.vscode/
 *.txt

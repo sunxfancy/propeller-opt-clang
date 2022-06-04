@@ -9,7 +9,7 @@ else
 endif
 
 
-CLANG_VERSION=12
+CLANG_VERSION=14
 
 PWD=$(shell pwd)
 LLVM=$(PWD)/source.dir/llvm-project/llvm
@@ -17,44 +17,47 @@ TRUNK=$(PWD)/install.dir/trunk/bin
 LABELS=$(PWD)/install.dir/labels/bin
 PGO_LABELS=$(PWD)/install.dir/pgo-labels/bin
 INSTRUMENTED=$(PWD)/install.dir/instrumented/bin
-AUTOFDO=$(PWD)/source.dir/autofdo
+AUTOFDO=$(PWD)/source.dir/propeller
 LABELS_PROF=$(PWD)/bench.dir/labels
 PGO_LABELS_PROF=$(PWD)/bench.dir/pgo-labels
 INSTRUMENTED_PROF=$(PWD)/build.dir/instrumented/profiles
 
-build: .autofdo .baseline .labels .instrumented
+
+build: .propeller .baseline .labels .instrumented
+
+opt: .pgo-opt-clang .propeller-opt-clang
+
+final: .pgo-propeller-opt-clang
 
 bench: 
 	make bench-labels
 	make bench-instrumented
 	make labels.create_llvm_prof
 	make merge_prof
-
-opt: .pgo .propeller
-
-bench2: 
+	make opt
 	make bench-pgo-labels
 	make pgo-labels.create_llvm_prof
-	make .final
+	make final
+	make test
 
 test: 
 	make baseline.test 
-	make pgo.test 
-	make propeller.test 
-	make final.test
+	make pgo-opt-clang.test 
+	make propeller-opt-clang.test 
+	make pgo-propeller-opt-clang.test
 
 source.dir/.llvm-project: 
 	mkdir -p source.dir/
 	cd source.dir/ && git clone --depth 1 --single-branch --branch release/${CLANG_VERSION}.x https://github.com/llvm/llvm-project.git
 	touch source.dir/.llvm-project
 	
-.trunk: source.dir/.llvm-project build.dir install.dir
+.trunk: source.dir/.llvm-project
 	mkdir -p build.dir/trunk 
 	mkdir -p install.dir/trunk
 	cd build.dir/trunk && cmake -G Ninja $(LLVM) \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_TARGETS_TO_BUILD=X86 \
-		-DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" \
+		-DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt;bolt" \
 		-DCOMPILER_RT_BUILD_SANITIZERS=OFF \
 		-DCOMPILER_RT_BUILD_XRAY=OFF \
 		-DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
@@ -62,16 +65,34 @@ source.dir/.llvm-project:
 	cd build.dir/trunk && ninja install -j $(shell nproc)
 	touch .trunk
 
+source.dir/.propeller: 
+	mkdir -p source.dir/
+	cd source.dir/ && git clone  --depth 1 --single-branch --branch propeller --recursive https://github.com/sunxfancy/autofdo.git propeller
+	touch source.dir/.propeller
+
 source.dir/.autofdo: 
 	mkdir -p source.dir/
-	cd source.dir/ && git clone  --depth 1 --single-branch --branch propeller --recursive https://github.com/sunxfancy/autofdo.git
+	cd source.dir/ && git clone  --depth 1 --single-branch --branch master --recursive https://github.com/sunxfancy/autofdo.git autofdo
 	touch source.dir/.autofdo
 
-.autofdo: source.dir/.autofdo .trunk
-	cd source.dir/autofdo && \
+.propeller: source.dir/.propeller .trunk
+	cd source.dir/propeller && \
 		aclocal -I . && autoheader && autoconf && automake --add-missing -c && \
 		./configure --with-llvm=$(TRUNK)/llvm-config
-	CC=$(TRUNK)/clang CXX=$(TRUNK)/clang++ cd source.dir/autofdo && make
+	CC=$(TRUNK)/clang CXX=$(TRUNK)/clang++ cd source.dir/propeller && make
+	touch .propeller
+
+.autofdo: source.dir/.autofdo .trunk
+	mkdir -p build.dir/autofdo
+	mkdir -p install.dir/autofdo
+	cd build.dir/autofdo && cmake -G Ninja $(AUTOFDO) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DLLVM_PATH=$(PWD)/install.dir/trunk \
+		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
+		-DCMAKE_CXX_COMPILER=$(TRUNK)/clang++ \
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/autofdo
+
+	cd build.dir/autofdo && ninja install -j $(shell nproc)
 	touch .autofdo
 
 .baseline: .trunk 
@@ -156,10 +177,10 @@ bench-instrumented: .instrumented
 merge_prof:
 	cd $(INSTRUMENTED_PROF) && $(TRUNK)/llvm-profdata merge -output=clang.profdata *
 
-.pgo:
-	mkdir -p build.dir/pgo
-	mkdir -p install.dir/pgo
-	cd build.dir/pgo && cmake -G Ninja $(LLVM) \
+.pgo-opt-clang:
+	mkdir -p build.dir/pgo-opt-clang
+	mkdir -p install.dir/pgo-opt-clang
+	cd build.dir/pgo-opt-clang && cmake -G Ninja $(LLVM) \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_TARGETS_TO_BUILD=X86 \
 		-DLLVM_OPTIMIZED_TABLEGEN=On \
@@ -169,14 +190,14 @@ merge_prof:
 		-DLLVM_USE_LINKER=lld \
 		-DLLVM_ENABLE_LTO=Thin  \
 		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
-		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo
-	cd build.dir/pgo && ninja install -j $(shell nproc)
-	touch .pgo
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo-opt-clang
+	cd build.dir/pgo-opt-clang && ninja install -j $(shell nproc)
+	touch .pgo-opt-clang
 
-.propeller:
-	mkdir -p build.dir/propeller
-	mkdir -p install.dir/propeller
-	cd build.dir/propeller && cmake -G Ninja $(LLVM) \
+.propeller-opt-clang:
+	mkdir -p build.dir/propeller-opt-clang
+	mkdir -p install.dir/propeller-opt-clang
+	cd build.dir/propeller-opt-clang && cmake -G Ninja $(LLVM) \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_TARGETS_TO_BUILD=X86 \
 		-DLLVM_OPTIMIZED_TABLEGEN=On \
@@ -189,9 +210,9 @@ merge_prof:
 		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
   		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
   		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(LABELS_PROF)/symorder.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
-		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/propeller
-	cd build.dir/propeller && ninja install -j $(shell nproc)
-	touch .propeller
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/propeller-opt-clang
+	cd build.dir/propeller-opt-clang && ninja install -j $(shell nproc)
+	touch .propeller-opt-clang
 
 
 .pgo-labels: .trunk 
@@ -231,10 +252,10 @@ bench-pgo-labels: .pgo-labels
 	cd bench.dir/pgo-labels && chmod +x ./perf_commands.sh
 	cd bench.dir/pgo-labels && (perf record -e cycles:u -j any,u -- ./perf_commands.sh)
 
-.final:
-	mkdir -p build.dir/final
-	mkdir -p install.dir/final
-	cd build.dir/final && cmake -G Ninja $(LLVM) \
+.pgo-propeller-opt-clang:
+	mkdir -p build.dir/pgo-propeller-opt-clang
+	mkdir -p install.dir/pgo-propeller-opt-clang
+	cd build.dir/pgo-propeller-opt-clang && cmake -G Ninja $(LLVM) \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_TARGETS_TO_BUILD=X86 \
 		-DLLVM_OPTIMIZED_TABLEGEN=On \
@@ -249,9 +270,9 @@ bench-pgo-labels: .pgo-labels
   		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,--symbol-ordering-file=$(PGO_LABELS_PROF)/symorder.txt -Wl,--lto-basic-block-sections=$(PGO_LABELS_PROF)/cluster.txt -Wl,--no-warn-symbol-ordering -fuse-ld=lld" \
 		-DLLVM_ENABLE_LTO=Thin  \
 		-DLLVM_PROFDATA_FILE=$(INSTRUMENTED_PROF)/clang.profdata \
-		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/final
-	cd build.dir/final && ninja install -j $(shell nproc)
-	touch .final
+		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/pgo-propeller-opt-clang
+	cd build.dir/pgo-propeller-opt-clang && ninja install -j $(shell nproc)
+	touch .pgo-propeller-opt-clang
 
 %.test:
 	mkdir -p test.dir/$(basename $@)
