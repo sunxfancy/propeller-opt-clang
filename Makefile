@@ -23,6 +23,8 @@ PGO_LABELS_PROF=$(PWD)/bench.dir/pgo-labels
 INSTRUMENTED_PROF=$(PWD)/build.dir/instrumented/profiles
 
 
+include ipra/ipra.mk
+
 build: .propeller .baseline .labels .instrumented
 
 opt: .pgo-opt-clang .propeller-opt-clang
