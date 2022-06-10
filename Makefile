@@ -75,6 +75,7 @@ source.dir/.propeller:
 source.dir/.autofdo: 
 	mkdir -p source.dir/
 	cd source.dir/ && git clone  --depth 1 --single-branch --branch master --recursive https://github.com/sunxfancy/autofdo.git autofdo
+	cd source.dir/autofdo/third_party/abseil && git apply ../../../../abseil.patch
 	touch source.dir/.autofdo
 
 .propeller: source.dir/.propeller .trunk
@@ -87,7 +88,7 @@ source.dir/.autofdo:
 .autofdo: source.dir/.autofdo .trunk
 	mkdir -p build.dir/autofdo
 	mkdir -p install.dir/autofdo
-	cd build.dir/autofdo && cmake -G Ninja $(AUTOFDO) \
+	cd build.dir/autofdo && cmake -G Ninja $(PWD)/source.dir/autofdo \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DLLVM_PATH=$(PWD)/install.dir/trunk \
 		-DCMAKE_C_COMPILER=$(TRUNK)/clang \
