@@ -65,7 +65,7 @@ source.dir/.llvm-project:
 		-DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/trunk
 	cd build.dir/trunk && ninja install -j $(shell nproc)
-	touch .trunk
+	# touch .trunk
 
 source.dir/.propeller: 
 	mkdir -p source.dir/
