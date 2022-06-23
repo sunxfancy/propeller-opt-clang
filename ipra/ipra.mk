@@ -58,8 +58,8 @@ dparser.ipra:
 	cd build.dir/dparser.ipra && cmake ../../source.dir/dparser-master -G Ninja \
 	 	-DCMAKE_C_COMPILER=$(CC) \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
-		-DCMAKE_C_FLAGS="-flto=full -fuse-ld=lld" \
-		-DCMAKE_CXX_FLAGS="-flto=full -fuse-ld=lld" \
+		-DCMAKE_C_FLAGS="-fno-inline-functions -flto=full -fuse-ld=lld" \
+		-DCMAKE_CXX_FLAGS="-fno-inline-functions -flto=full -fuse-ld=lld" \
 		-DCMAKE_EXE_LINKER_FLAGS="-Wl,-mllvm -Wl,-enable-ipra" \
 		-DCMAKE_SHARED_LINKER_FLAGS="-Wl,-mllvm -Wl,-enable-ipra" \
 		-DCMAKE_MODULE_LINKER_FLAGS="-Wl,-mllvm -Wl,-enable-ipra" \
@@ -73,11 +73,18 @@ dparser:
 	cd build.dir/dparser && cmake ../../source.dir/dparser-master -G Ninja \
 	 	-DCMAKE_C_COMPILER=$(CC) \
 		-DCMAKE_CXX_COMPILER=$(CXX) \
-		-DCMAKE_C_FLAGS="-flto=full -fuse-ld=lld" \
-		-DCMAKE_CXX_FLAGS="-flto=full -fuse-ld=lld" \
+		-DCMAKE_C_FLAGS="-fno-inline-functions -flto=full -fuse-ld=lld" \
+		-DCMAKE_CXX_FLAGS="-fno-inline-functions -flto=full -fuse-ld=lld" \
 		-DCMAKE_EXE_LINKER_FLAGS="-flto=full  -fuse-ld=lld" \
 		-DCMAKE_SHARED_LINKER_FLAGS="-flto=full  -fuse-ld=lld" \
 		-DCMAKE_MODULE_LINKER_FLAGS="-flto=full  -fuse-ld=lld" \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=../../install.dir/dparser
 	cd build.dir/dparser && ninja install
+
+
+dparser-bench:
+	cd build.dir/ && perf stat -o no-ipra-c.txt -r5 -e instructions,cycles,L1-icache-misses,iTLB-misses -- ./dparser/make_dparser -o test.c  ../source.dir/dparser-master/tests/ansic.test.g
+	cd build.dir/ && perf stat -o ipra-c.txt -r5 -e instructions,cycles,L1-icache-misses,iTLB-misses -- ./dparser.ipra/make_dparser -o test.c  ../source.dir/dparser-master/tests/ansic.test.g
+	cd build.dir/ && perf stat -o no-ipra-p.txt -r5 -e instructions,cycles,L1-icache-misses,iTLB-misses -- ./dparser/make_dparser -o test.c  ../source.dir/dparser-master/tests/python.test.g
+	cd build.dir/ && perf stat -o ipra-p.txt -r5 -e instructions,cycles,L1-icache-misses,iTLB-misses -- ./dparser.ipra/make_dparser -o test.c  ../source.dir/dparser-master/tests/python.test.g
