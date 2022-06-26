@@ -1,0 +1,7 @@
+commands:
+  - ./example 10
+binary: ./example
+
+clangpath: /home/xiaofan/Workspace/propeller-opt-clang/install.dir/trunk/bin
+propellerpath: /home/xiaofan/Workspace/propeller-opt-clang/source.dir/propeller
+regpath: /home/xiaofan/Workspace/propeller-opt-clang/build.dir/autofdo/create_reg_prof

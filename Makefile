@@ -96,7 +96,7 @@ source.dir/.autofdo:
 		-DCMAKE_INSTALL_PREFIX=$(PWD)/install.dir/autofdo
 
 	cd build.dir/autofdo && ninja install -j $(shell nproc)
-	touch .autofdo
+	# touch .autofdo
 
 .baseline: .trunk 
 	mkdir -p build.dir/baseline

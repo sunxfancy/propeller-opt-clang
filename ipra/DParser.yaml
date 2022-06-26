@@ -1,0 +1,7 @@
+commands:
+  - ./make_dparser -o test.c /home/xiaofan/Workspace/propeller-opt-clang/source.dir/dparser-master/tests/python.test.g 
+
+binary: ./make_dparser
+clangpath: /home/xiaofan/Workspace/propeller-opt-clang/install.dir/trunk/bin
+propellerpath: /home/xiaofan/Workspace/propeller-opt-clang/source.dir/propeller
+regpath: /home/xiaofan/Workspace/propeller-opt-clang/build.dir/autofdo/create_reg_prof
