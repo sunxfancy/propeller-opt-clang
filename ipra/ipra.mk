@@ -29,6 +29,12 @@ source.dir/.C_FFT:
 	cd source.dir && wget https://github.com/sunxfancy/C_FFT/archive/refs/heads/master.zip && unzip ./master.zip && rm ./master.zip
 	touch source.dir/.C_FFT
 
+
+source.dir/.mysql-experiment:
+	mkdir -p source.dir/
+	cd source.dir && git clone https://github.com/shenhanc78/mysql-experiment
+	touch source.dir/.mysql-experiment
+
 build.dir/counter: ipra/counter.go
 	mkdir -p build.dir
 	cd build.dir && go build ../ipra/counter.go
