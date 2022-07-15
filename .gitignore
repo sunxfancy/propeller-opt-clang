@@ -19,3 +19,4 @@
 .propeller-opt-clang
 /.vscode/
 *.txt
+!CMakeLists.txt
